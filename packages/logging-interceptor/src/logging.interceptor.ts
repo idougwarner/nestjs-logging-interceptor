@@ -39,11 +39,27 @@ export class LoggingInterceptor implements NestInterceptor {
     const ctx: string = `${this.userPrefix}${this.ctxPrefix} - ${method} - ${url}`;
     const message: string = `Incoming request - ${method} - ${url}`;
 
+    let maskedBody: string | object;
+    if (url === '/auth/login') {
+      if (typeof body === 'object') {
+        maskedBody = Object.keys(body).reduce(
+          (accumulator: {[key: string]: string}, currentValue: string): {[key: string]: string} => ({
+            ...accumulator,
+            [currentValue]: currentValue !== 'password' ? body[currentValue] : '****'
+          }), 
+        {});
+      } else {
+        maskedBody = '****';
+      }
+    } else {
+      maskedBody = body;
+    }
+
     this.logger.log(
       {
         message,
         method,
-        body,
+        body: maskedBody,
         headers,
       },
       ctx,

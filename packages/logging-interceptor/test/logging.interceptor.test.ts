@@ -7,6 +7,7 @@ import {
 } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import * as request from 'supertest';
+import { AuthModule } from './test-app/auth/auth.module';
 import { CatsModule } from './test-app/cats/cats.module';
 import { CoreModule } from './test-app/core/core.module';
 
@@ -15,7 +16,7 @@ describe('Logging interceptor', () => {
 
   beforeAll(async () => {
     const moduleRef: TestingModule = await Test.createTestingModule({
-      imports: [CoreModule, CatsModule],
+      imports: [CoreModule, CatsModule, AuthModule],
     }).compile();
 
     app = moduleRef.createNestApplication();
@@ -60,6 +61,45 @@ describe('Logging interceptor', () => {
       {
         message: outgoingMsg,
         body: `This action returns all cats`,
+      },
+      resCtx,
+    ]);
+  });
+
+  it('logs the input and output auth/login(body: object) details - OK status code', async () => {
+    const logSpy: jest.SpyInstance = jest.spyOn(Logger.prototype, 'log');
+    const url: string = `/auth/login`;
+
+    await request(app.getHttpServer()).post(url).send({
+      email: 'test@test.com',
+      password: 'test-password'
+    }).expect(HttpStatus.CREATED);
+
+    const ctx: string = `LoggingInterceptor - POST - ${url}`;
+    const resCtx: string = `LoggingInterceptor - 201 - POST - ${url}`;
+    const incomingMsg: string = `Incoming request - POST - ${url}`;
+    const outgoingMsg: string = `Outgoing response - 201 - POST - ${url}`;
+
+    /**
+     * Info level
+     */
+    expect(logSpy).toBeCalledTimes(2);
+    expect(logSpy.mock.calls[0]).toEqual([
+      {
+        body: {
+          email: 'test@test.com',
+          password: '****'
+        },
+        headers: expect.any(Object),
+        message: incomingMsg,
+        method: `POST`,
+      },
+      ctx,
+    ]);
+    expect(logSpy.mock.calls[1]).toEqual([
+      {
+        message: outgoingMsg,
+        body: `This action returns auth object`,
       },
       resCtx,
     ]);
